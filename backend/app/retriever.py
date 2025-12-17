@@ -71,7 +71,7 @@ class LoanKnowledgeRetriever:
   # -------------------------
   # 4. Retrieve Relevant Chunks
   # -------------------------
-  def retriever(self, query: str, k: int = 4) -> List[Document]:
+  def retrieve(self, query: str, k: int = 4) -> List[Document]:
     if not self.vectorstore:
       raise RuntimeError("Vector store not initialized. Call build_index() first.")
 
