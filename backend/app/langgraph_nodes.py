@@ -123,7 +123,7 @@ def format_answer(state: AgentState) -> AgentState:
     return state
 
   promt = f"""
-  Rewrite the following answer in a clear, professional, customer-friendly tone. Do NOT add new information.PermissionError
+  Rewrite the following answer in a clear, professional, customer-friendly tone. Do NOT add new information.
 
   Answer: {state['validated_answer']}
   """
