@@ -33,13 +33,13 @@ app.add_middleware(
 # ===============================
 # 3. Initialize Core Components
 # ===============================
-orchestator = LoanAssistantOrchestrator()
+orchestrator = LoanAssistantOrchestrator()
 retriever = LoanKnowledgeRetriever()
 
 # ===============================
 # 4. Startup Event
 # ===============================
-@app.on_event("start up")
+@app.on_event("startup")
 def startup_event():
   """
   Build the vector index once when the app starts.
@@ -73,7 +73,7 @@ def chat(reuqest: ChatRequest):
     }
   )
 
-  answer = orchestator.run(reuqest.message)
+  answer = orchestrator.run(reuqest.message)
 
   logger.info(
     "Chat request completed",
