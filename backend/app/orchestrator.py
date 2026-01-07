@@ -5,7 +5,9 @@ from backend.app.langgraph_nodes import (
   classify_query,
   retrieve_knowledge,
   validate_retrieval,
-  format_answer
+  format_answer,
+  route_after_classification,
+  route_after_validation
 )
 
 class LoanAssistantOrchestrator:
@@ -32,9 +34,29 @@ class LoanAssistantOrchestrator:
     # Define execution order
     graph.set_entry_point("classify_query")
 
-    graph.add_edge("classify_query", "retrieve_knowledge")
+    # Conditional branching AFTER classification
+    graph.add_conditional_edges(
+      "classify_query",
+      route_after_classification,
+      {
+        "retrieve": "retrieve_knowledge",
+        "format": "format_answer"
+      }
+    )
+
+    # Normal edge: retrieval → validation
     graph.add_edge("retrieve_knowledge", "validate_retrieval")
-    graph.add_edge("validate_retrieval", "format_answer")
+
+    # Conditional branching AFTER validation
+    graph.add_conditional_edges(
+      "validate_retrieval",
+      route_after_validation,
+      {
+        "format": "format_answer"
+      }
+    )
+
+    # End graph
     graph.add_edge("format_answer", END)
 
   # -----------------------------
@@ -55,4 +77,4 @@ class LoanAssistantOrchestrator:
     }
 
     result = self.graph.invoke(initial_state)
-    return result
+    return result["final_answer"]

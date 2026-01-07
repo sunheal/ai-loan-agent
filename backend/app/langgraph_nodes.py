@@ -3,7 +3,9 @@ from typing import TypedDict, List, Optional
 from langchain.schema import Document
 from backend.app.llm_client import LLMClient
 from backend.app.retriever import LoanKnowledgeRetriever
+from backend.app.utils import get_logger
 
+logger = get_logger("langgraph")
 
 # ===============================
 # 1. Graph State Definition
@@ -36,6 +38,10 @@ def classify_query(state: AgentState) -> AgentState:
   - document
   - unsupported
   """
+  logger.info(
+    "Classifying user query",
+    extra={"extra_data": {"user_query": state["user_query"]}}
+  )
 
   promt = f"""
   Classify the following loan-related user query into one category:
@@ -55,7 +61,28 @@ def classify_query(state: AgentState) -> AgentState:
   intent = llm.complete(promt).strip().lower()
 
   state["intent"] = intent
+
+  logger.info(
+    "Query classified",
+    extra={"extra_data": {"intent": intent}}
+  )
+
   return state
+
+def route_after_classification(state: AgentState) -> str:
+  """
+  Decide whether to retrieve knowledge based on intent.
+  """
+  if state["intent"] in {
+    "informational",
+    "eligibility",
+    "rate",
+    "document"
+  }:
+    return "retrieve"
+
+  # unsupported or unknown intent
+  return "format"
 
 
 # ===============================
@@ -81,6 +108,11 @@ def validate_retrieval(state: AgentState) -> AgentState:
   """
 
   if not state["retrieved_docs"]:
+    logger.warning(
+      "No documents retrieved",
+      extra={"extra_data": {"escalate_to_human": True}}
+    )
+
     state["escalate_to_human"] = True
     state["validated_answer"] = None
     return state
@@ -99,13 +131,34 @@ def validate_retrieval(state: AgentState) -> AgentState:
   answer = llm.complete(promt)
 
   if "INSUFFICIENT_CONTEXT" in answer:
+    logger.warning(
+      "Insufficient context for answer",
+      extra={"extra_data": {"escalate_to_human": True}}
+    )
+
     state["escalate_to_human"] = True
     state["validated_answer"] = None
   else:
+    logger.info(
+      "Answer validated",
+      extra={"extra_data": {"escalate_to_human": False}}
+    )
+
     state["escalate_to_human"] = False
     state["validated_answer"] = answer
 
   return state
+
+def route_after_validation(state: AgentState) -> str:
+  """
+  Decide whether to escalate or finalize.
+  """
+  if state["escalate_to_human"]:
+    return "format"
+
+  # Right now both routes go to format_answer,
+  # but this keeps the graph extensible (audit, retry, human queue, etc.)
+  return "format"
 
 
 # ===============================
