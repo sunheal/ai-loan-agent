@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -29,62 +29,51 @@ class LLMClient:
     if not api_key:
       raise ValueError("OPENAI_API_KEY not found in environment variables.")
 
-    self.clent = OpenAI(api_key)
+    self.client = OpenAI(api_key=api_key)
     self.model = model
     self.temperature = temperature
     self.max_tokens = max_tokens
 
-async def generate(
+  def generate(
+      self,
+      messages: List[Dict[str, str]],
+      temperature: Optional[float] = None,
+      max_tokens: Optional[int] = None,
+  ) -> str:
+    """
+    Sends messages to OpenAI Chat Completion.
+
+    Args:
+        messages: [{"role": "system"|"user"|"assistant", "content": "..."}]
+    """
+
+    try:
+      response = self.client.chat.completions.create(
+        model = self.model,
+        messages = messages,
+        temperature = temperature or self.temperature,
+        max_tokens = max_tokens or self.max_tokens,
+      )
+
+      return response.choices[0].message.content
+
+    except Exception as e:
+      logger.error(f"[LLMClient] error during completion: {str(e)}")
+      raise e
+
+  def simple_query(
     self,
-    messages: List[Dict[str, str]],
-    temperature: Optional[float] = None,
-    max_tokens: Optional[int] = None,
-    stream: bool = False
-) -> Any:
-  """
-  Sends messages to OpenAI Chat Completion.
+    prompt: str,
+    system_prompt: Optional[str] = None
+  ) -> str:
+    """
+    Helper for simple one-shot calls.
+    """
+    messages = []
 
-  Args:
-      messages: [{"role": "system"|"user"|"assistant", "content": "..."}]
-      stream: if True, yields tokens instead of returning a full string.
-  """
+    if system_prompt:
+      messages.append({"role": "system", "content": system_prompt})
 
-  try:
-    response = self.client.chat.completions.create(
-      model = self.model,
-      messages = messages,
-      temperature = temperature or self.temperature,
-      max_tokens = max_tokens or self.max_tokens,
-      stream = stream
-    )
+    messages.append({"role": "user", "content": prompt})
 
-    # Streaming mode
-    if stream:
-      for chunk in response:
-        if chunk.choices and chunk.choices[0].delta:
-          yield chunk.choices[0].delta.get("content", "")
-      return
-
-    # Normal mode
-    return response.choices[0].message["content"]
-
-  except Exception as e:
-    logger.error(f"[LLMClient] error during completion: {str(e)}")
-    raise e
-
-async def simple_query(
-  self,
-  promt: str,
-  system_promt: Optional[str] = None
-) -> str:
-  """
-  Helper for simple one-shot calls.
-  """
-  messages = []
-
-  if system_promt:
-    messages.append({"role": "system", "content": system_promt})
-
-  messages.append({"role": "user", "content": promt})
-
-  return await self.generate(messages)
+    return self.generate(messages)

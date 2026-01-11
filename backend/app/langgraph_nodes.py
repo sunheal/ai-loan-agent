@@ -1,9 +1,15 @@
 from typing import TypedDict, List, Optional
-
 from langchain.schema import Document
+
 from backend.app.llm_client import LLMClient
 from backend.app.retriever import LoanKnowledgeRetriever
 from backend.app.utils import get_logger
+from backend.app.promts import (
+  CLASSIFY_QUERY_PROMT,
+  VALIDATE_RETRIEVAL_SYSTEM_RPOMT,
+  VALIDATE_RETRIEVAL_USER_RPOMT,
+  FORMAT_ANSWER_PROMT
+)
 
 logger = get_logger("langgraph")
 
@@ -43,22 +49,11 @@ def classify_query(state: AgentState) -> AgentState:
     extra={"extra_data": {"user_query": state["user_query"]}}
   )
 
-  promt = f"""
-  Classify the following loan-related user query into one category:
+  promt = CLASSIFY_QUERY_PROMT.format(
+    query=state["user_query"]
+  )
 
-  Categories:
-  - informational
-  - eligibility
-  - rate
-  - document
-  - unsupported
-
-  Query: "{state['user_query']}"
-
-  Return only the category name
-  """
-
-  intent = llm.complete(promt).strip().lower()
+  intent = llm.simple_query(promt).strip().lower()
 
   state["intent"] = intent
 
@@ -119,16 +114,15 @@ def validate_retrieval(state: AgentState) -> AgentState:
 
   context = "\n\n".join(doc.page_content for doc in state["retrieved_docs"])
 
-  promt = f"""
-  Using ONLY the context below, answer the user's question.
-  If the answer is not fully supported by the context, respond with "INSUFFICIENT_CONTEXT".
+  user_promt = VALIDATE_RETRIEVAL_USER_RPOMT.format(
+    context=context,
+    query=state["user_query"]
+  )
 
-  Context: {context}
-
-  Question: {state["user_query"]}
-  """
-
-  answer = llm.complete(promt)
+  answer = llm.simple_query(
+    promt=user_promt,
+    system_prompt=VALIDATE_RETRIEVAL_SYSTEM_RPOMT
+  )
 
   if "INSUFFICIENT_CONTEXT" in answer:
     logger.warning(
@@ -175,13 +169,10 @@ def format_answer(state: AgentState) -> AgentState:
     )
     return state
 
-  promt = f"""
-  Rewrite the following answer in a clear, professional, customer-friendly tone. Do NOT add new information.
+  promt = FORMAT_ANSWER_PROMT.format(
+    answer=state["validated_answer"]
+  )
 
-  Answer: {state['validated_answer']}
-  """
-
-  formatted = llm.complete(promt)
-  state["final_answer"] = formatted
+  state["final_answer"] = llm.simple_query(promt)
 
   return state
