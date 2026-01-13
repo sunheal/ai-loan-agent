@@ -62,13 +62,14 @@ class LoanAssistantOrchestrator:
   # -----------------------------
   # Public Execution Method
   # -----------------------------
-  def run(self, message: str) -> str:
+  def run(self, user_query: str, request_id: str) -> str:
     """
     Executes the graph for a single user query.
     """
 
     initial_state: AgentState = {
-      "user_query": message,
+      "user_query": user_query,
+      "request_id": request_id,
       "intent": None,
       "retrieved_docs": [],
       "validated_answer": None,

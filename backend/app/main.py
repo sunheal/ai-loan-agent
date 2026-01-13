@@ -57,23 +57,26 @@ def health_check():
 # 6. Chat Endpoint
 # ===============================
 @app.post("/chat", response_model=ChatResponse)
-def chat(reuqest: ChatRequest):
+def chat(request: ChatRequest):
   """
   Main entry point for the AI Loan Assistant.
   """
-  request_id = str(uuid.uuid4())
+  request_id = request.request_id or str(uuid.uuid4())
 
   logger.info(
     "Incoming chat request",
     extra={
       "extra_data": {
         "request_id": request_id,
-        "message_length": len(reuqest.message)
+        "user_query_length": len(request.user_query)
       }
     }
   )
 
-  answer = orchestrator.run(reuqest.message)
+  answer = orchestrator.run(
+    user_query=request.user_query,
+    request_id=request_id
+  )
 
   logger.info(
     "Chat request completed",
@@ -84,4 +87,7 @@ def chat(reuqest: ChatRequest):
     }
   )
 
-  return ChatResponse(answer=answer)
+  return ChatResponse(
+    answer=answer,
+    request_id=request_id
+  )
