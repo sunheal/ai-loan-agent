@@ -1,4 +1,4 @@
-# 🧠 AI Loan Agent
+# 🧠 AI Agent Prototype - (Loan Assistant)
 
 An AI-powered **loan assistance backend** built with **FastAPI**, **LangChain**, **FAISS**, and **OpenAI embeddings**. This service ingests internal documents, builds a persistent vector store, and exposes an API that can answer user questions using Retrieval-Augmented Generation (RAG).
 
