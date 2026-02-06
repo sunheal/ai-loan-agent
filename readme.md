@@ -9,17 +9,19 @@ The project is containerized with **Docker** and designed so embeddings are comp
 ## 🚀 High-Level Architecture
 
 ```
-User Request
-    ↓
-FastAPI API (/query)
-    ↓
-Retriever (FAISS Vector Store)
-    ↓
-Relevant Documents
-    ↓
-LLM (OpenAI)
-    ↓
-Final Answer
+User Query
+ ↓
+Security Layer (PII filtering)
+ ↓
+RAG Retrieval
+ ↓
+Answer Generation
+ ↓
+Confidence & Validation
+ ↓
+Compliance Layer (Legal-Owned)
+ ↓
+Final Response / Escalation
 ```
 
 ---
